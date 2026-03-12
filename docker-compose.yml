@@ -23,5 +23,18 @@ services:
       retries: 5
       start_period: 10s
 
+  python:
+    build:
+      context: .
+      dockerfile: docker/python/Dockerfile
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    profiles:
+      - python
+
 volumes:
   postgres_data:

@@ -1,6 +1,6 @@
 # WNS Challenge
 
-Este `README.md` queda enfocado en la estructura del repositorio, el setup tecnico base y el estado actual del parser de `Carnes y Pescados.xlsx`.
+Este `README.md` queda enfocado en la estructura del repositorio, el setup tecnico base y el estado actual de los parsers implementados en Python.
 
 ## Estructura actual
 
@@ -8,7 +8,9 @@ Este `README.md` queda enfocado en la estructura del repositorio, el setup tecni
 - `inputs/`: archivos entregados por la consigna.
 - `docs/der.png`: diagrama entidad relacion de la base.
 - `docker-compose.yml`: servicio PostgreSQL con Docker.
+- `docker/python/Dockerfile`: imagen base para ejecutar parsers de Python en contenedor.
 - `docker/postgres/init/01_schema.sql`: esquema inicial de la base.
+- `.dockerignore`: archivos excluidos del contexto de build.
 - `requirements.txt`: dependencias Python del parser actual.
 - `src/parsers/`: parseo y normalizacion de archivos fuente.
 - `src/cli/`: entrypoints para inspeccionar salidas del parser.
@@ -20,17 +22,44 @@ Este `README.md` queda enfocado en la estructura del repositorio, el setup tecni
 
 ## Programas necesarios
 
-Para levantar este proyecto en otro dispositivo, con el estado actual del repositorio, necesitas tener instalado:
+Para levantar este proyecto en otro dispositivo, con el estado actual del repositorio, tienes dos caminos:
+
+- `Local`: usar Python instalado en tu maquina.
+- `Docker`: encapsular el entorno Python y PostgreSQL en contenedores.
+
+### Opcion local
+
+Necesitas tener instalado:
 
 - `Git`: para clonar el repositorio.
 - `Python 3`: para ejecutar el parser y la futura capa de procesamiento.
 - `pip`: para instalar dependencias Python.
+
+### Opcion Docker
+
+Necesitas tener instalado:
+
+- `Git`: para clonar el repositorio.
 - `Docker Desktop`: para ejecutar PostgreSQL en contenedor.
 - `WSL 2`: revisar en Windows si Docker Desktop lo instalo o lo habilito durante la instalacion, porque suele usarlo como backend.
 
-## Dependencias Python
+## Entorno Python local
 
-Instalar dependencias:
+Antes de instalar dependencias, crear un entorno virtual local en el root del proyecto:
+
+```powershell
+python -m venv .venv
+```
+
+Si trabajas en VS Code, selecciona `.venv\Scripts\python.exe` como interpreter del workspace. Si prefieres activarlo manualmente en PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Si PowerShell bloquea `Activate.ps1`, no hace falta depender de la activacion manual: basta con seleccionar ese interpreter en VS Code o ejecutar `.\.venv\Scripts\python.exe` directamente.
+
+Luego instalar dependencias:
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -40,6 +69,28 @@ Dependencias actuales:
 
 - `pandas==3.0.1`
 - `openpyxl==3.1.5`
+- `pdfplumber==0.11.9`
+
+## Entorno Python con Docker
+
+Construir la imagen del servicio Python:
+
+```powershell
+docker compose build python
+```
+
+Luego puedes ejecutar los parsers sin instalar Python ni dependencias en tu maquina:
+
+```powershell
+docker compose run --rm python python -m src.cli.inspect_carnes_pescados
+docker compose run --rm python python -m src.cli.inspect_verduleria --json
+```
+
+Nota:
+
+- Los comandos `python -m ...` del `README` siguen siendo el camino local.
+- Con Docker, los equivalentes pasan a ser `docker compose run --rm python python -m ...`.
+- El contenedor monta el repo completo, por eso lee `inputs/` y `src/` directamente desde tu copia local.
 
 ## Base de datos PostgreSQL
 
@@ -110,32 +161,73 @@ docker compose up -d postgres
 - Base: `wns_challenge`
 - Usuario: `wns_user`
 
-## Parser actual
+## Parsers actuales
 
-Por ahora la parte implementada en Python cubre solo el parseo y la normalizacion de `inputs/Carnes y Pescados.xlsx`.
+Por ahora la parte implementada en Python cubre:
+
+- el parseo y la normalizacion de `inputs/Carnes y Pescados.xlsx`
+- el parseo y la normalizacion de `inputs/verduleria.pdf`
+
+Todavia no esta implementado el parseo de `inputs/Recetas.md` ni la insercion en PostgreSQL desde Python.
 
 - El parser real esta en `src/parsers/carnes_pescados.py`.
-- El CLI de inspeccion esta en `src/cli/inspect_carnes_pescados.py`.
-- La capa `src/ingest/carnes_pescados.py` solo prepara el payload para la futura insercion en PostgreSQL.
-- Todavia no se insertan datos en la base desde Python.
+- El parser real de verduras esta en `src/parsers/verduleria.py`.
+- Los CLI de inspeccion estan en `src/cli/inspect_carnes_pescados.py` y `src/cli/inspect_verduleria.py`.
+- La capa `src/ingest/` solo prepara payloads para la futura insercion en PostgreSQL.
 
-### Como ejecutar el parser
+### Como ejecutar los parsers
 
-Salida legible:
+Modo local, Excel, salida legible:
 
 ```powershell
 python -m src.cli.inspect_carnes_pescados
 ```
 
-Salida JSON:
+Modo local, Excel, salida JSON:
 
 ```powershell
 python -m src.cli.inspect_carnes_pescados --json
 ```
 
-### Salida normalizada actual
+Modo local, PDF, salida legible:
 
-El parser devuelve una lista de productos con esta estructura:
+```powershell
+python -m src.cli.inspect_verduleria
+```
+
+Modo local, PDF, salida JSON:
+
+```powershell
+python -m src.cli.inspect_verduleria --json
+```
+
+Modo Docker, Excel, salida legible:
+
+```powershell
+docker compose run --rm python python -m src.cli.inspect_carnes_pescados
+```
+
+Modo Docker, Excel, salida JSON:
+
+```powershell
+docker compose run --rm python python -m src.cli.inspect_carnes_pescados --json
+```
+
+Modo Docker, PDF, salida legible:
+
+```powershell
+docker compose run --rm python python -m src.cli.inspect_verduleria
+```
+
+Modo Docker, PDF, salida JSON:
+
+```powershell
+docker compose run --rm python python -m src.cli.inspect_verduleria --json
+```
+
+### Salidas normalizadas actuales
+
+El parser del Excel devuelve una lista de productos con esta estructura:
 
 ```json
 {
@@ -146,13 +238,38 @@ El parser devuelve una lista de productos con esta estructura:
 }
 ```
 
-Supuestos actuales:
+El parser del PDF devuelve una lista de productos con esta estructura:
+
+```json
+{
+  "categoria": "Verduleria",
+  "subcategoria": "Fruto",
+  "nombre": "Tomate",
+  "precio_kg_ars": 1200.0,
+  "es_estacional": true
+}
+```
+
+Supuestos actuales del Excel:
 
 - `Carniceria` se toma desde el bloque `C:D` del Excel.
 - `Pescaderia` se toma desde el bloque `F:G` del Excel.
 - `Pescaderia` no trae subcategoria explicita, por eso se usa `General`.
 - Los precios se normalizan desde formatos mixtos como `6800`, `6.000` y `$2600`.
 
-### Flujo actual del parser
+Supuestos actuales del PDF:
+
+- `Verduleria` se toma como categoria unica para todos los productos del PDF.
+- La subcategoria se extrae desde lineas como `Fruto por kg`, `Hoja por kg`, `Raiz por kg` y `Tuberculo por kg`.
+- `De estacion` se transforma en `es_estacional = true`.
+- Las lineas informativas o de pie de pagina no se consideran productos.
+
+### Flujos actuales de los parsers
+
+Excel `Carnes y Pescados.xlsx`:
 
 ![Diagrama de flujos carnes y pescados](docs/diagrama-de-flujo-carnes-y-pescados.png)
+
+PDF `verduleria.pdf`:
+
+![Diagrama de flujos verduleria](docs/diagrama-de-flujo-verduleria.png)
