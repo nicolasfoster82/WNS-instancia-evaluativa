@@ -167,12 +167,14 @@ Por ahora la parte implementada en Python cubre:
 
 - el parseo y la normalizacion de `inputs/Carnes y Pescados.xlsx`
 - el parseo y la normalizacion de `inputs/verduleria.pdf`
+- el parseo y la normalizacion de `inputs/Recetas.md`
 
-Todavia no esta implementado el parseo de `inputs/Recetas.md` ni la insercion en PostgreSQL desde Python.
+Todavia no esta implementada la insercion en PostgreSQL desde Python.
 
 - El parser real esta en `src/parsers/carnes_pescados.py`.
 - El parser real de verduras esta en `src/parsers/verduleria.py`.
-- Los CLI de inspeccion estan en `src/cli/inspect_carnes_pescados.py` y `src/cli/inspect_verduleria.py`.
+- El parser real de recetas esta en `src/parsers/recetas.py`.
+- Los CLI de inspeccion estan en `src/cli/inspect_carnes_pescados.py`,  `src/cli/inspect_verduleria.py` y`src/cli/inspect_recetas.py`.
 - La capa `src/ingest/` solo prepara payloads para la futura insercion en PostgreSQL.
 
 ### Como ejecutar los parsers
@@ -201,6 +203,18 @@ Modo local, PDF, salida JSON:
 python -m src.cli.inspect_verduleria --json
 ```
 
+Modo local, Markdown de recetas, salida legible:
+
+```powershell
+python -m src.cli.inspect_recetas
+```
+
+Modo local, Markdown de recetas, salida JSON:
+
+```powershell
+python -m src.cli.inspect_recetas --json
+```
+
 Modo Docker, Excel, salida legible:
 
 ```powershell
@@ -223,6 +237,18 @@ Modo Docker, PDF, salida JSON:
 
 ```powershell
 docker compose run --rm python python -m src.cli.inspect_verduleria --json
+```
+
+Modo Docker, Markdown de recetas, salida legible:
+
+```powershell
+docker compose run --rm python python -m src.cli.inspect_recetas
+```
+
+Modo Docker, Markdown de recetas, salida JSON:
+
+```powershell
+docker compose run --rm python python -m src.cli.inspect_recetas --json
 ```
 
 ### Salidas normalizadas actuales
@@ -250,6 +276,21 @@ El parser del PDF devuelve una lista de productos con esta estructura:
 }
 ```
 
+El parser de recetas devuelve una lista de recetas con esta estructura:
+
+```json
+{
+  "nombre": "Asado con ensalada criolla",
+  "instrucciones": "Cortar las verduras en cubos y mezclarlas con un poco de sal.",
+  "ingredientes": [
+    {
+      "nombre_producto": "Asado de tira",
+      "cantidad_gramos": 1000
+    }
+  ]
+}
+```
+
 Supuestos actuales del Excel:
 
 - `Carniceria` se toma desde el bloque `C:D` del Excel.
@@ -264,6 +305,14 @@ Supuestos actuales del PDF:
 - `De estacion` se transforma en `es_estacional = true`.
 - Las lineas informativas o de pie de pagina no se consideran productos.
 
+Supuestos actuales de `Recetas.md`:
+
+- Cada receta empieza con un encabezado Markdown de nivel 1.
+- Las secciones de ingredientes pueden aparecer como `Lista de Ingredientes`, `Ingredientes` o `Lista`.
+- Las secciones de instrucciones pueden aparecer como `Instrucciones` o `Preparacion`.
+- Las cantidades se normalizan a gramos enteros.
+- Los ingredientes quedan referenciados por `nombre_producto` para la futura resolucion contra la tabla `productos`.
+
 ### Flujos actuales de los parsers
 
 Excel `Carnes y Pescados.xlsx`:
@@ -273,3 +322,7 @@ Excel `Carnes y Pescados.xlsx`:
 PDF `verduleria.pdf`:
 
 ![Diagrama de flujos verduleria](docs/diagrama-de-flujo-verduleria.png)
+
+Markdown `Recetas.md`:
+
+![Diagrama de flujos recetas](docs/diagrama-de-flujo-recetas.png)
