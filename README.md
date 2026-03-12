@@ -16,6 +16,7 @@ Este `README.md` queda enfocado en la estructura del repositorio, el setup tecni
 - `src/cli/`: entrypoints para inspeccionar salidas del parser.
 - `src/ingest/`: adaptacion de datos normalizados para futura ingesta en PostgreSQL.
 - `src/ingest/db.py`: configuracion y conexion reutilizable a PostgreSQL.
+- `src/ingest/productos.py`: upserts reutilizables para categorias, subcategorias y productos.
 
 ## DER
 
@@ -172,14 +173,16 @@ Por ahora la parte implementada en Python cubre:
 - el parseo y la normalizacion de `inputs/verduleria.pdf`
 - el parseo y la normalizacion de `inputs/Recetas.md`
 
-La insercion en PostgreSQL desde Python esta implementada solo para `inputs/Carnes y Pescados.xlsx`.
+La insercion en PostgreSQL desde Python esta implementada para `inputs/Carnes y Pescados.xlsx` y `inputs/verduleria.pdf`.
 
 - El parser real esta en `src/parsers/carnes_pescados.py`.
 - El parser real de verduras esta en `src/parsers/verduleria.py`.
 - El parser real de recetas esta en `src/parsers/recetas.py`.
 - Los CLI de inspeccion estan en `src/cli/inspect_carnes_pescados.py`, `src/cli/inspect_verduleria.py` y `src/cli/inspect_recetas.py`.
 - La ingesta actual de carnes y pescados se ejecuta desde `src/ingest/carnes_pescados.py`.
+- La ingesta actual de verduleria se ejecuta desde `src/ingest/verduleria.py`.
 - `src/ingest/db.py` centraliza la configuracion y conexion a PostgreSQL.
+- `src/ingest/productos.py` centraliza los upserts reutilizables de categorias, subcategorias y productos.
 
 ### Como ejecutar los parsers
 
@@ -281,6 +284,32 @@ Modo Docker, salida JSON:
 
 ```powershell
 docker compose run --rm python python -m src.ingest.carnes_pescados --json
+```
+
+Con PostgreSQL levantado, puedes ejecutar la ingesta de verduleria asi:
+
+Modo local:
+
+```powershell
+python -m src.ingest.verduleria
+```
+
+Modo local, salida JSON:
+
+```powershell
+python -m src.ingest.verduleria --json
+```
+
+Modo Docker:
+
+```powershell
+docker compose run --rm python python -m src.ingest.verduleria
+```
+
+Modo Docker, salida JSON:
+
+```powershell
+docker compose run --rm python python -m src.ingest.verduleria --json
 ```
 
 ### Como visualizar lo insertado

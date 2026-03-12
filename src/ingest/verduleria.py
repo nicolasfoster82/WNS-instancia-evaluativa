@@ -1,14 +1,85 @@
 from __future__ import annotations
 
+import argparse
+import json
+from pathlib import Path
 
-def build_product_payload(productos: list[dict[str, object]]) -> list[dict[str, object]]:
-    return [
-        {
-            "categoria": producto["categoria"],
-            "subcategoria": producto["subcategoria"],
-            "nombre": producto["nombre"],
-            "precio_kg_ars": producto["precio_kg_ars"],
-            "es_estacional": producto["es_estacional"],
-        }
-        for producto in productos
-    ]
+from src.ingest.db import DEFAULT_ENV_FILE
+from src.ingest.productos import ingest_productos
+from src.parsers.verduleria import DEFAULT_INPUT, parse_verduleria
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def ingest_verduleria(
+    file_path: Path = DEFAULT_INPUT,
+    env_path: Path = DEFAULT_ENV_FILE,
+) -> dict[str, object]:
+    productos = parse_verduleria(file_path)
+    result = ingest_productos(productos, env_path)
+    result["archivo"] = str(file_path)
+    return result
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Ingest inputs/verduleria.pdf into PostgreSQL")
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=DEFAULT_INPUT,
+        help="Path to the pdf file to ingest.",
+    )
+    parser.add_argument(
+        "--env-file",
+        type=Path,
+        default=DEFAULT_ENV_FILE,
+        help="Path to the env file with PostgreSQL connection settings.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the ingestion result as JSON.",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    result = ingest_verduleria(args.input, args.env_file)
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "archivo": _display_path(args.input),
+                    "env_file": _display_path(args.env_file),
+                    "resultado": {
+                        "categorias": result["categorias"],
+                        "subcategorias": result["subcategorias"],
+                        "productos": result["productos"],
+                    },
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+    else:
+        print(f"Archivo fuente: {_display_path(args.input)}")
+        print(f"Archivo de entorno: {_display_path(args.env_file)}")
+        print("")
+        print("Resultado de la ingesta:")
+        print(f"- Categorias procesadas: {result['categorias']}")
+        print(f"- Subcategorias procesadas: {result['subcategorias']}")
+        print(f"- Productos procesados: {result['productos']}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
