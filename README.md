@@ -15,6 +15,7 @@ Este `README.md` queda enfocado en la estructura del repositorio, el setup tecni
 - `src/parsers/`: parseo y normalizacion de archivos fuente.
 - `src/cli/`: entrypoints para inspeccionar salidas del parser.
 - `src/ingest/`: adaptacion de datos normalizados para futura ingesta en PostgreSQL.
+- `src/ingest/db.py`: configuracion y conexion reutilizable a PostgreSQL.
 
 ## DER
 
@@ -70,6 +71,7 @@ Dependencias actuales:
 - `pandas==3.0.1`
 - `openpyxl==3.1.5`
 - `pdfplumber==0.11.9`
+- `psycopg[binary]==3.2.12`
 
 ## Entorno Python con Docker
 
@@ -101,6 +103,7 @@ Se dejo preparada una instancia reproducible con la imagen `postgres:15.17-trixi
 Las variables base estan en `.env.example`:
 
 ```env
+POSTGRES_HOST=localhost
 POSTGRES_DB=wns_challenge
 POSTGRES_USER=wns_user
 POSTGRES_PASSWORD=wns_password
@@ -169,13 +172,14 @@ Por ahora la parte implementada en Python cubre:
 - el parseo y la normalizacion de `inputs/verduleria.pdf`
 - el parseo y la normalizacion de `inputs/Recetas.md`
 
-Todavia no esta implementada la insercion en PostgreSQL desde Python.
+La insercion en PostgreSQL desde Python esta implementada solo para `inputs/Carnes y Pescados.xlsx`.
 
 - El parser real esta en `src/parsers/carnes_pescados.py`.
 - El parser real de verduras esta en `src/parsers/verduleria.py`.
 - El parser real de recetas esta en `src/parsers/recetas.py`.
-- Los CLI de inspeccion estan en `src/cli/inspect_carnes_pescados.py`,  `src/cli/inspect_verduleria.py` y`src/cli/inspect_recetas.py`.
-- La capa `src/ingest/` solo prepara payloads para la futura insercion en PostgreSQL.
+- Los CLI de inspeccion estan en `src/cli/inspect_carnes_pescados.py`, `src/cli/inspect_verduleria.py` y `src/cli/inspect_recetas.py`.
+- La ingesta actual de carnes y pescados se ejecuta desde `src/ingest/carnes_pescados.py`.
+- `src/ingest/db.py` centraliza la configuracion y conexion a PostgreSQL.
 
 ### Como ejecutar los parsers
 
@@ -249,6 +253,54 @@ Modo Docker, Markdown de recetas, salida JSON:
 
 ```powershell
 docker compose run --rm python python -m src.cli.inspect_recetas --json
+```
+
+### Como ejecutar la ingesta actual
+
+Con PostgreSQL levantado, puedes ejecutar la ingesta de carnes y pescados asi:
+
+Modo local:
+
+```powershell
+python -m src.ingest.carnes_pescados
+```
+
+Modo local, salida JSON:
+
+```powershell
+python -m src.ingest.carnes_pescados --json
+```
+
+Modo Docker:
+
+```powershell
+docker compose run --rm python python -m src.ingest.carnes_pescados
+```
+
+Modo Docker, salida JSON:
+
+```powershell
+docker compose run --rm python python -m src.ingest.carnes_pescados --json
+```
+
+### Como visualizar lo insertado
+
+Resumen de cantidades:
+
+```powershell
+docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT COUNT(*) AS categorias FROM categorias; SELECT COUNT(*) AS subcategorias FROM subcategorias; SELECT COUNT(*) AS productos FROM productos;"
+```
+
+Categorias y subcategorias cargadas:
+
+```powershell
+docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT c.nombre AS categoria, s.nombre AS subcategoria FROM subcategorias s JOIN categorias c ON c.id_categoria = s.id_categoria ORDER BY c.nombre, s.nombre;"
+```
+
+Productos cargados con su precio:
+
+```powershell
+docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT c.nombre AS categoria, s.nombre AS subcategoria, p.nombre AS producto, p.precio_kg_ars, p.es_estacional FROM productos p JOIN subcategorias s ON s.id_subcategoria = p.id_subcategoria JOIN categorias c ON c.id_categoria = s.id_categoria ORDER BY c.nombre, s.nombre, p.nombre;"
 ```
 
 ### Salidas normalizadas actuales
