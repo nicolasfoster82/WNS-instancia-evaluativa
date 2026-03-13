@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WNS Challenge | Cotizador</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">WNS Challenge</p>
+        <h1>Cotizador de recetas</h1>
+      </section>
+
+      <section class="panel controls">
+        <div class="panel-heading">
+          <h2>Consultar cotizacion</h2>
+          <p>La fecha debe estar dentro de los ultimos 30 dias.</p>
+        </div>
+
+        <form id="quote-form" class="quote-form">
+          <label class="field">
+            <span>Receta</span>
+            <select id="recipe-select" name="receta" required>
+              <option value="">Cargando recetas...</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Fecha</span>
+            <input id="date-input" name="fecha" type="date" required />
+          </label>
+
+          <button id="submit-button" type="submit">Cotizar receta</button>
+        </form>
+
+        <p id="form-message" class="form-message" aria-live="polite"></p>
+      </section>
+
+      <section id="result-panel" class="panel result hidden" aria-live="polite">
+        <div class="result-header">
+          <div>
+            <p class="eyebrow">Resultado</p>
+            <h2 id="result-title">Receta</h2>
+          </div>
+          <div class="result-date">
+            <span>Fecha</span>
+            <strong id="result-date"></strong>
+          </div>
+        </div>
+
+        <div class="totals-grid">
+          <article class="total-card">
+            <span>Total ARS</span>
+            <strong id="total-ars">-</strong>
+          </article>
+          <article class="total-card">
+            <span>Total USD</span>
+            <strong id="total-usd">-</strong>
+          </article>
+          <article class="total-card">
+            <span>Cotizacion USD/ARS</span>
+            <strong id="fx-rate">-</strong>
+          </article>
+        </div>
+
+        <div class="panel-heading compact">
+          <h3>Ingredientes</h3>
+          <p>Se muestra la cantidad pedida, la cantidad a comprar y el subtotal.</p>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ingrediente</th>
+                <th>Receta</th>
+                <th>Compra</th>
+                <th>Precio/kg</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="ingredients-body"></tbody>
+          </table>
+        </div>
+
+        <div class="panel-heading compact">
+          <h3>Instrucciones</h3>
+        </div>
+        <p id="instructions" class="instructions"></p>
+      </section>
+    </main>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

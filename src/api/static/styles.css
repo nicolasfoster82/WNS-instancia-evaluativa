@@ -1,0 +1,269 @@
+:root {
+  --bg: #f3ede2;
+  --panel: rgba(255, 251, 245, 0.92);
+  --panel-border: rgba(66, 47, 24, 0.14);
+  --ink: #20160e;
+  --muted: #66584a;
+  --accent: #a04a2d;
+  --accent-strong: #7c3118;
+  --accent-soft: #f4d5c7;
+  --success: #285f4a;
+  --danger: #8f2d24;
+  --shadow: 0 24px 60px rgba(59, 37, 21, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(160, 74, 45, 0.16), transparent 28%),
+    radial-gradient(circle at top right, rgba(40, 95, 74, 0.12), transparent 24%),
+    linear-gradient(180deg, #f7f1e7 0%, var(--bg) 100%);
+  font-family: "Trebuchet MS", "Gill Sans", sans-serif;
+}
+
+.page {
+  width: min(1100px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 48px 0 72px;
+}
+
+.hero,
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+}
+
+.hero {
+  padding: 40px;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+  color: var(--accent);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+}
+
+h1 {
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  line-height: 0.98;
+}
+
+h2 {
+  font-size: 1.7rem;
+}
+
+h3 {
+  font-size: 1.15rem;
+}
+
+.panel-heading p,
+.instructions,
+.form-message {
+  color: var(--muted);
+}
+
+.panel {
+  padding: 28px;
+  margin-bottom: 24px;
+}
+
+.panel-heading {
+  margin-bottom: 20px;
+}
+
+.panel-heading.compact {
+  margin: 24px 0 16px;
+}
+
+.quote-form {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr) auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+select,
+input,
+button {
+  min-height: 52px;
+  border-radius: 16px;
+  border: 1px solid rgba(66, 47, 24, 0.16);
+  font: inherit;
+}
+
+select,
+input {
+  width: 100%;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--ink);
+}
+
+button {
+  padding: 0 22px;
+  border: 0;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+  box-shadow: 0 14px 28px rgba(124, 49, 24, 0.24);
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.form-message {
+  min-height: 24px;
+  margin: 14px 0 0;
+}
+
+.form-message.error {
+  color: var(--danger);
+}
+
+.result.hidden {
+  display: none;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: end;
+}
+
+.result-date {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.result-date strong {
+  color: var(--ink);
+}
+
+.totals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.total-card {
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 245, 238, 0.9));
+  border: 1px solid rgba(66, 47, 24, 0.1);
+}
+
+.total-card span {
+  display: block;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.total-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  line-height: 1;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(66, 47, 24, 0.1);
+  text-align: left;
+}
+
+th {
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.instructions {
+  margin: 0;
+  line-height: 1.7;
+}
+
+@media (max-width: 860px) {
+  .quote-form,
+  .totals-grid,
+  .result-header {
+    grid-template-columns: 1fr;
+  }
+
+  .result-header {
+    display: grid;
+  }
+
+  .result-date {
+    text-align: left;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    width: min(100% - 20px, 100%);
+    padding: 24px 0 40px;
+  }
+
+  .hero,
+  .panel {
+    padding: 22px;
+    border-radius: 22px;
+  }
+
+  h1 {
+    font-size: 2.3rem;
+  }
+}

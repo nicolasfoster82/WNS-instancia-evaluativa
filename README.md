@@ -17,6 +17,7 @@ Este `README.md` queda enfocado en la estructura del repositorio, el setup tecni
 - `src/ingest/`: persistencia de datos normalizados en PostgreSQL.
 - `src/services/`: logica de negocio que consume PostgreSQL y la API externa permitida por la consigna.
 - `src/api/`: capa HTTP para exponer la resolucion de la consigna.
+- `src/api/static/`: frontend minimo servido por FastAPI para mostrar el funcionamiento de la API.
 - `src/ingest/db.py`: configuracion y conexion reutilizable a PostgreSQL.
 - `src/ingest/productos.py`: upserts reutilizables para categorias, subcategorias y productos.
 
@@ -443,6 +444,8 @@ La salida incluye:
 
 Ademas del CLI, la resolucion de la consigna tambien se expone por HTTP.
 
+La misma instancia de FastAPI tambien sirve un frontend minimo en la raiz `/` para consultar recetas y cotizaciones desde el navegador.
+
 ### Levantar la API en local
 
 ```powershell
@@ -454,6 +457,12 @@ python -m uvicorn src.api.app:app --reload
 ```powershell
 docker compose --profile api up --build api
 ```
+
+### Frontend demo
+
+Con la API levantada, abrir en el navegador:
+
+- `http://127.0.0.1:8000/`
 
 ### Endpoints
 
@@ -493,7 +502,3 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/cotizacion?receta=Asado%20con%20ens
    - `http://127.0.0.1:8000/api/cotizacion?receta=Asado%20con%20ensalada%20criolla&fecha=YYYY-MM-DD`
 
 2. Para cotizar, reemplazar `YYYY-MM-DD` por una fecha valida dentro de los ultimos 30 dias.
-
-3. Si quieres explorar la API visualmente antes de probar en Postman, tambien puedes abrir:
-
-   - `http://127.0.0.1:8000/docs`
