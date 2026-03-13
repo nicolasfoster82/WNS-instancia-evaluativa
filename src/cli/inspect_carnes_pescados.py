@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 
 from src.parsers.carnes_pescados import DEFAULT_INPUT, parse_carnes_pescados, summarize_products
@@ -54,31 +53,13 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_INPUT,
         help="Path to the xlsx file to inspect.",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Print the normalized parse result as JSON.",
-    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     productos = parse_carnes_pescados(args.input)
-    if args.json:
-        print(
-            json.dumps(
-                {
-                    "archivo": _display_path(args.input),
-                    "resumen": summarize_products(productos),
-                    "productos": productos,
-                },
-                indent=2,
-                ensure_ascii=False,
-            )
-        )
-    else:
-        print(render_text_report(productos, args.input))
+    print(render_text_report(productos, args.input))
     return 0
 
 

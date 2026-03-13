@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 
 from src.ingest.db import DEFAULT_ENV_FILE, connect_postgres
@@ -123,39 +122,18 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_ENV_FILE,
         help="Path to the env file with PostgreSQL connection settings.",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Print the ingestion result as JSON.",
-    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     result = ingest_recetas(args.input, args.env_file)
-    if args.json:
-        print(
-            json.dumps(
-                {
-                    "archivo": _display_path(args.input),
-                    "env_file": _display_path(args.env_file),
-                    "resultado": {
-                        "recetas": result["recetas"],
-                        "ingredientes": result["ingredientes"],
-                    },
-                },
-                indent=2,
-                ensure_ascii=False,
-            )
-        )
-    else:
-        print(f"Archivo fuente: {_display_path(args.input)}")
-        print(f"Archivo de entorno: {_display_path(args.env_file)}")
-        print("")
-        print("Resultado de la ingesta:")
-        print(f"- Recetas procesadas: {result['recetas']}")
-        print(f"- Ingredientes procesados: {result['ingredientes']}")
+    print(f"Archivo fuente: {_display_path(args.input)}")
+    print(f"Archivo de entorno: {_display_path(args.env_file)}")
+    print("")
+    print("Resultado de la ingesta:")
+    print(f"- Recetas procesadas: {result['recetas']}")
+    print(f"- Ingredientes procesados: {result['ingredientes']}")
     return 0
 
 

@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import argparse
-import json
 from datetime import date
 from pathlib import Path
 
 import psycopg
 
 from src.ingest.db import DEFAULT_ENV_FILE
-from src.services.calculator import cotizar_receta, list_recetas, serialize_cotizacion
+from src.services.calculator import cotizar_receta, list_recetas
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -52,11 +51,6 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="List the available recipes already loaded in PostgreSQL.",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Print the quotation result as JSON.",
-    )
     return parser.parse_args()
 
 
@@ -65,12 +59,9 @@ def main() -> int:
     try:
         if args.listar_recetas:
             recetas = list_recetas(args.env_file)
-            if args.json:
-                print(json.dumps({"recetas": recetas}, indent=2, ensure_ascii=False))
-            else:
-                print("Recetas disponibles:")
-                for receta in recetas:
-                    print(f"- {receta}")
+            print("Recetas disponibles:")
+            for receta in recetas:
+                print(f"- {receta}")
             return 0
 
         if not args.receta or not args.fecha:
@@ -79,36 +70,24 @@ def main() -> int:
             )
 
         result = cotizar_receta(args.receta, args.fecha, args.env_file)
-
-        if args.json:
+        print(f"Archivo de entorno: {_display_path(args.env_file)}")
+        print(f"Receta: {result['receta']}")
+        print(f"Fecha: {result['fecha']}")
+        print(f"Cotizacion USD/ARS: {result['cotizacion_usd_ars']}")
+        print("")
+        print("Ingredientes:")
+        for ingrediente in result["ingredientes"]:
             print(
-                json.dumps(
-                    {
-                        "env_file": _display_path(args.env_file),
-                        "cotizacion": serialize_cotizacion(result),
-                    },
-                    indent=2,
-                    ensure_ascii=False,
-                )
+                "- "
+                f"{ingrediente['nombre_producto']}: "
+                f"receta {ingrediente['cantidad_receta_gramos']} g, "
+                f"compra {ingrediente['cantidad_compra_gramos']} g, "
+                f"precio/kg ARS {ingrediente['precio_kg_ars']}, "
+                f"subtotal ARS {ingrediente['subtotal_ars']}"
             )
-        else:
-            print(f"Receta: {result['receta']}")
-            print(f"Fecha: {result['fecha']}")
-            print(f"Cotizacion USD/ARS: {result['cotizacion_usd_ars']}")
-            print("")
-            print("Ingredientes:")
-            for ingrediente in result["ingredientes"]:
-                print(
-                    "- "
-                    f"{ingrediente['nombre_producto']}: "
-                    f"receta {ingrediente['cantidad_receta_gramos']} g, "
-                    f"compra {ingrediente['cantidad_compra_gramos']} g, "
-                    f"precio/kg ARS {ingrediente['precio_kg_ars']}, "
-                    f"subtotal ARS {ingrediente['subtotal_ars']}"
-                )
-            print("")
-            print(f"Total ARS: {result['total_ars']}")
-            print(f"Total USD: {result['total_usd']}")
+        print("")
+        print(f"Total ARS: {result['total_ars']}")
+        print(f"Total USD: {result['total_usd']}")
     except (ValueError, RuntimeError, psycopg.Error) as exc:
         raise SystemExit(str(exc)) from exc
 

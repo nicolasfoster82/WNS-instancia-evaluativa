@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 
 from src.parsers.recetas import DEFAULT_INPUT, parse_recetas, summarize_recetas
@@ -51,31 +50,13 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_INPUT,
         help="Path to the markdown file to inspect.",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Print the normalized parse result as JSON.",
-    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     recetas = parse_recetas(args.input)
-    if args.json:
-        print(
-            json.dumps(
-                {
-                    "archivo": _display_path(args.input),
-                    "resumen": summarize_recetas(recetas),
-                    "recetas": recetas,
-                },
-                indent=2,
-                ensure_ascii=False,
-            )
-        )
-    else:
-        print(render_text_report(recetas, args.input))
+    print(render_text_report(recetas, args.input))
     return 0
 
 

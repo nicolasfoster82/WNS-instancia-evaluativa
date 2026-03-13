@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 
 from src.ingest.db import DEFAULT_ENV_FILE
@@ -42,41 +41,19 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_ENV_FILE,
         help="Path to the env file with PostgreSQL connection settings.",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Print the ingestion result as JSON.",
-    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     result = ingest_carnes_pescados(args.input, args.env_file)
-    if args.json:
-        print(
-            json.dumps(
-                {
-                    "archivo": _display_path(args.input),
-                    "env_file": _display_path(args.env_file),
-                    "resultado": {
-                        "categorias": result["categorias"],
-                        "subcategorias": result["subcategorias"],
-                        "productos": result["productos"],
-                    },
-                },
-                indent=2,
-                ensure_ascii=False,
-            )
-        )
-    else:
-        print(f"Archivo fuente: {_display_path(args.input)}")
-        print(f"Archivo de entorno: {_display_path(args.env_file)}")
-        print("")
-        print("Resultado de la ingesta:")
-        print(f"- Categorias procesadas: {result['categorias']}")
-        print(f"- Subcategorias procesadas: {result['subcategorias']}")
-        print(f"- Productos procesados: {result['productos']}")
+    print(f"Archivo fuente: {_display_path(args.input)}")
+    print(f"Archivo de entorno: {_display_path(args.env_file)}")
+    print("")
+    print("Resultado de la ingesta:")
+    print(f"- Categorias procesadas: {result['categorias']}")
+    print(f"- Subcategorias procesadas: {result['subcategorias']}")
+    print(f"- Productos procesados: {result['productos']}")
     return 0
 
 

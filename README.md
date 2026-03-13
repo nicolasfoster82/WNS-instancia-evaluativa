@@ -90,7 +90,7 @@ Luego puedes ejecutar los parsers sin instalar Python ni dependencias en tu maqu
 
 ```powershell
 docker compose run --rm python python -m src.cli.inspect_carnes_pescados
-docker compose run --rm python python -m src.cli.inspect_verduleria --json
+docker compose run --rm python python -m src.cli.inspect_verduleria
 ```
 
 Nota:
@@ -204,22 +204,10 @@ Modo local, Excel, salida legible:
 python -m src.cli.inspect_carnes_pescados
 ```
 
-Modo local, Excel, salida JSON:
-
-```powershell
-python -m src.cli.inspect_carnes_pescados --json
-```
-
 Modo local, PDF, salida legible:
 
 ```powershell
 python -m src.cli.inspect_verduleria
-```
-
-Modo local, PDF, salida JSON:
-
-```powershell
-python -m src.cli.inspect_verduleria --json
 ```
 
 Modo local, Markdown de recetas, salida legible:
@@ -228,22 +216,10 @@ Modo local, Markdown de recetas, salida legible:
 python -m src.cli.inspect_recetas
 ```
 
-Modo local, Markdown de recetas, salida JSON:
-
-```powershell
-python -m src.cli.inspect_recetas --json
-```
-
 Modo Docker, Excel, salida legible:
 
 ```powershell
 docker compose run --rm python python -m src.cli.inspect_carnes_pescados
-```
-
-Modo Docker, Excel, salida JSON:
-
-```powershell
-docker compose run --rm python python -m src.cli.inspect_carnes_pescados --json
 ```
 
 Modo Docker, PDF, salida legible:
@@ -252,22 +228,10 @@ Modo Docker, PDF, salida legible:
 docker compose run --rm python python -m src.cli.inspect_verduleria
 ```
 
-Modo Docker, PDF, salida JSON:
-
-```powershell
-docker compose run --rm python python -m src.cli.inspect_verduleria --json
-```
-
 Modo Docker, Markdown de recetas, salida legible:
 
 ```powershell
 docker compose run --rm python python -m src.cli.inspect_recetas
-```
-
-Modo Docker, Markdown de recetas, salida JSON:
-
-```powershell
-docker compose run --rm python python -m src.cli.inspect_recetas --json
 ```
 
 ### Como ejecutar la ingesta actual
@@ -280,22 +244,10 @@ Modo local:
 python -m src.ingest.carnes_pescados
 ```
 
-Modo local, salida JSON:
-
-```powershell
-python -m src.ingest.carnes_pescados --json
-```
-
 Modo Docker:
 
 ```powershell
 docker compose run --rm python python -m src.ingest.carnes_pescados
-```
-
-Modo Docker, salida JSON:
-
-```powershell
-docker compose run --rm python python -m src.ingest.carnes_pescados --json
 ```
 
 Con PostgreSQL levantado, puedes ejecutar la ingesta de verduleria asi:
@@ -306,22 +258,10 @@ Modo local:
 python -m src.ingest.verduleria
 ```
 
-Modo local, salida JSON:
-
-```powershell
-python -m src.ingest.verduleria --json
-```
-
 Modo Docker:
 
 ```powershell
 docker compose run --rm python python -m src.ingest.verduleria
-```
-
-Modo Docker, salida JSON:
-
-```powershell
-docker compose run --rm python python -m src.ingest.verduleria --json
 ```
 
 Con PostgreSQL levantado y con `productos` ya cargados desde Excel y PDF, puedes ejecutar la ingesta de recetas asi:
@@ -332,22 +272,10 @@ Modo local:
 python -m src.ingest.recetas
 ```
 
-Modo local, salida JSON:
-
-```powershell
-python -m src.ingest.recetas --json
-```
-
 Modo Docker:
 
 ```powershell
 docker compose run --rm python python -m src.ingest.recetas
-```
-
-Modo Docker, salida JSON:
-
-```powershell
-docker compose run --rm python python -m src.ingest.recetas --json
 ```
 
 ### Como visualizar lo insertado
@@ -497,22 +425,10 @@ Modo local:
 python -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD
 ```
 
-Modo local, salida JSON:
-
-```powershell
-python -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD --json
-```
-
 Modo Docker:
 
 ```powershell
 docker compose run --rm python python -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD
-```
-
-Modo Docker, salida JSON:
-
-```powershell
-docker compose run --rm python python -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD --json
 ```
 
 La salida incluye:
