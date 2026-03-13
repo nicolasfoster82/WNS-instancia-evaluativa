@@ -41,5 +41,30 @@ services:
     profiles:
       - python
 
+  api:
+    build:
+      context: .
+      dockerfile: docker/python/Dockerfile
+    working_dir: /app
+    command: uvicorn src.api.app:app --host 0.0.0.0 --port 8000
+    volumes:
+      - .:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-wns_challenge}
+      POSTGRES_USER: ${POSTGRES_USER:-wns_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wns_password}
+      CURRENCY_API_URLS: ${CURRENCY_API_URLS:-https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@{date}/v1/currencies/usd.json,https://{date}.currency-api.pages.dev/v1/currencies/usd.json}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - api
+
 volumes:
   postgres_data:

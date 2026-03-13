@@ -1,20 +1,22 @@
 # WNS Challenge
 
-Este `README.md` queda enfocado en la estructura del repositorio, el setup tecnico base y el estado actual de los parsers implementados en Python.
+Este `README.md` queda enfocado en la estructura del repositorio, el setup tecnico base y el estado actual del procesamiento, persistencia y consulta de datos implementados en Python.
 
 ## Estructura actual
 
 - `consigna.md`: enunciado original del desafio.
 - `inputs/`: archivos entregados por la consigna.
 - `docs/der.png`: diagrama entidad relacion de la base.
-- `docker-compose.yml`: servicio PostgreSQL con Docker.
-- `docker/python/Dockerfile`: imagen base para ejecutar parsers de Python en contenedor.
+- `docker-compose.yml`: servicios Docker para PostgreSQL, scripts Python y API HTTP.
+- `docker/python/Dockerfile`: imagen base para ejecutar scripts Python y la API en contenedor.
 - `docker/postgres/init/01_schema.sql`: esquema inicial de la base.
 - `.dockerignore`: archivos excluidos del contexto de build.
-- `requirements.txt`: dependencias Python del parser actual.
+- `requirements.txt`: dependencias Python del proyecto.
 - `src/parsers/`: parseo y normalizacion de archivos fuente.
 - `src/cli/`: entrypoints para inspeccionar salidas del parser.
-- `src/ingest/`: adaptacion de datos normalizados para futura ingesta en PostgreSQL.
+- `src/ingest/`: persistencia de datos normalizados en PostgreSQL.
+- `src/services/`: logica de negocio que consume PostgreSQL y la API externa permitida por la consigna.
+- `src/api/`: capa HTTP para exponer la resolucion de la consigna.
 - `src/ingest/db.py`: configuracion y conexion reutilizable a PostgreSQL.
 - `src/ingest/productos.py`: upserts reutilizables para categorias, subcategorias y productos.
 
@@ -73,6 +75,8 @@ Dependencias actuales:
 - `openpyxl==3.1.5`
 - `pdfplumber==0.11.9`
 - `psycopg[binary]==3.2.12`
+- `fastapi==0.135.1`
+- `uvicorn==0.41.0`
 
 ## Entorno Python con Docker
 
@@ -109,6 +113,7 @@ POSTGRES_DB=wns_challenge
 POSTGRES_USER=wns_user
 POSTGRES_PASSWORD=wns_password
 POSTGRES_PORT=5432
+CURRENCY_API_URLS=https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@{date}/v1/currencies/usd.json,https://{date}.currency-api.pages.dev/v1/currencies/usd.json
 ```
 
 Si quieres personalizarlas:
@@ -116,6 +121,8 @@ Si quieres personalizarlas:
 ```powershell
 Copy-Item .env.example .env
 ```
+
+`CURRENCY_API_URLS` acepta una lista separada por comas de endpoints con placeholder `{date}`. El servicio de cotizacion usa el primero como primario y prueba los siguientes como fallback.
 
 ## Como levantar la base
 
@@ -179,11 +186,15 @@ La insercion en PostgreSQL desde Python esta implementada para `inputs/Carnes y 
 - El parser real de verduras esta en `src/parsers/verduleria.py`.
 - El parser real de recetas esta en `src/parsers/recetas.py`.
 - Los CLI de inspeccion estan en `src/cli/inspect_carnes_pescados.py`, `src/cli/inspect_verduleria.py` y `src/cli/inspect_recetas.py`.
+- El CLI de cotizacion esta en `src/cli/cotizar_receta.py`.
+- La API HTTP se arma en `src/api/app.py` y `src/api/routes.py`.
 - La ingesta actual de carnes y pescados se ejecuta desde `src/ingest/carnes_pescados.py`.
 - La ingesta actual de verduleria se ejecuta desde `src/ingest/verduleria.py`.
 - La ingesta actual de recetas se ejecuta desde `src/ingest/recetas.py`.
 - `src/ingest/db.py` centraliza la configuracion y conexion a PostgreSQL.
 - `src/ingest/productos.py` centraliza los upserts reutilizables de categorias, subcategorias y productos.
+- `src/services/calculator.py` centraliza la logica de cotizacion del plato.
+- `src/services/exchange_rate.py` centraliza la consulta de cotizacion USD/ARS.
 
 ### Como ejecutar los parsers
 
@@ -452,3 +463,121 @@ PDF `verduleria.pdf`:
 Markdown `Recetas.md`:
 
 ![Diagrama de flujos recetas](docs/diagrama-de-flujo-recetas.png)
+
+## Resolver la consigna
+
+Con PostgreSQL levantado y con las tres fuentes ya ingeridas, la aplicacion puede cotizar un plato directamente desde la base.
+
+### 1. Listar recetas disponibles
+
+Modo local:
+
+```powershell
+python -m src.cli.cotizar_receta --listar-recetas
+```
+
+Modo Docker:
+
+```powershell
+docker compose run --rm python python -m src.cli.cotizar_receta --listar-recetas
+```
+
+### 2. Cotizar una receta por fecha
+
+La fecha debe estar en formato `YYYY-MM-DD` y dentro de los ultimos 30 dias. El calculo:
+
+- usa los productos ya persistidos en PostgreSQL
+- redondea cada compra al siguiente multiplo de `250 g`
+- consulta la API de cotizacion historica USD/ARS indicada en la consigna
+- permite configurar endpoints alternativos con `CURRENCY_API_URLS` sin tocar el codigo
+
+Modo local:
+
+```powershell
+python -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD
+```
+
+Modo local, salida JSON:
+
+```powershell
+python -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD --json
+```
+
+Modo Docker:
+
+```powershell
+docker compose run --rm python python -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD
+```
+
+Modo Docker, salida JSON:
+
+```powershell
+docker compose run --rm python python -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD --json
+```
+
+La salida incluye:
+
+- nombre de la receta
+- fecha cotizada
+- cotizacion USD/ARS usada
+- ingredientes con cantidad pedida, cantidad a comprar, precio por kilo y subtotal
+- total final en pesos argentinos y dolares estadounidenses
+
+## API HTTP
+
+Ademas del CLI, la resolucion de la consigna tambien se expone por HTTP.
+
+### Levantar la API en local
+
+```powershell
+python -m uvicorn src.api.app:app --reload
+```
+
+### Levantar la API con Docker
+
+```powershell
+docker compose --profile api up --build api
+```
+
+### Endpoints
+
+- `GET /api/health`: verifica que la API este arriba.
+- `GET /api/recetas`: devuelve las recetas ya cargadas en PostgreSQL.
+- `GET /api/cotizacion?receta=...&fecha=YYYY-MM-DD`: cotiza una receta usando PostgreSQL y la API historica USD/ARS.
+- `GET /docs`: documentacion interactiva generada por FastAPI.
+
+### Diagramas de secuencia de la API
+
+`GET /api/health`:
+
+![Diagrama de secuencia health](docs/diagrama-de-secuencia-health.png)
+
+`GET /api/recetas`:
+
+![Diagrama de secuencia recetas](docs/diagrama-de-secuencia-recetas.png)
+
+`GET /api/cotizacion`:
+
+![Diagrama de secuencia cotizacion](docs/diagrama-de-secuencia-cotizacion.png)
+
+Ejemplos locales:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/health"
+Invoke-RestMethod "http://127.0.0.1:8000/api/recetas"
+Invoke-RestMethod "http://127.0.0.1:8000/api/cotizacion?receta=Asado%20con%20ensalada%20criolla&fecha=YYYY-MM-DD"
+```
+
+### Probar endpoints en Postman
+
+1. Probar estas URLs con metodo `GET`:
+
+   - `http://127.0.0.1:8000/api/health`
+   - `http://127.0.0.1:8000/api/recetas`
+   - `http://127.0.0.1:8000/api/cotizacion?receta=Asado%20con%20ensalada%20criolla&fecha=YYYY-MM-DD`
+
+2. Para cotizar, reemplazar `YYYY-MM-DD` por una fecha valida dentro de los ultimos 30 dias.
+
+3. Si quieres explorar la API visualmente antes de probar en Postman, tambien puedes abrir:
+
+   - `http://127.0.0.1:8000/docs`
