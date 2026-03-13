@@ -173,7 +173,7 @@ Por ahora la parte implementada en Python cubre:
 - el parseo y la normalizacion de `inputs/verduleria.pdf`
 - el parseo y la normalizacion de `inputs/Recetas.md`
 
-La insercion en PostgreSQL desde Python esta implementada para `inputs/Carnes y Pescados.xlsx` y `inputs/verduleria.pdf`.
+La insercion en PostgreSQL desde Python esta implementada para `inputs/Carnes y Pescados.xlsx`, `inputs/verduleria.pdf` e `inputs/Recetas.md`.
 
 - El parser real esta en `src/parsers/carnes_pescados.py`.
 - El parser real de verduras esta en `src/parsers/verduleria.py`.
@@ -181,6 +181,7 @@ La insercion en PostgreSQL desde Python esta implementada para `inputs/Carnes y 
 - Los CLI de inspeccion estan en `src/cli/inspect_carnes_pescados.py`, `src/cli/inspect_verduleria.py` y `src/cli/inspect_recetas.py`.
 - La ingesta actual de carnes y pescados se ejecuta desde `src/ingest/carnes_pescados.py`.
 - La ingesta actual de verduleria se ejecuta desde `src/ingest/verduleria.py`.
+- La ingesta actual de recetas se ejecuta desde `src/ingest/recetas.py`.
 - `src/ingest/db.py` centraliza la configuracion y conexion a PostgreSQL.
 - `src/ingest/productos.py` centraliza los upserts reutilizables de categorias, subcategorias y productos.
 
@@ -312,6 +313,32 @@ Modo Docker, salida JSON:
 docker compose run --rm python python -m src.ingest.verduleria --json
 ```
 
+Con PostgreSQL levantado y con `productos` ya cargados desde Excel y PDF, puedes ejecutar la ingesta de recetas asi:
+
+Modo local:
+
+```powershell
+python -m src.ingest.recetas
+```
+
+Modo local, salida JSON:
+
+```powershell
+python -m src.ingest.recetas --json
+```
+
+Modo Docker:
+
+```powershell
+docker compose run --rm python python -m src.ingest.recetas
+```
+
+Modo Docker, salida JSON:
+
+```powershell
+docker compose run --rm python python -m src.ingest.recetas --json
+```
+
 ### Como visualizar lo insertado
 
 Resumen de cantidades:
@@ -330,6 +357,24 @@ Productos cargados con su precio:
 
 ```powershell
 docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT c.nombre AS categoria, s.nombre AS subcategoria, p.nombre AS producto, p.precio_kg_ars, p.es_estacional FROM productos p JOIN subcategorias s ON s.id_subcategoria = p.id_subcategoria JOIN categorias c ON c.id_categoria = s.id_categoria ORDER BY c.nombre, s.nombre, p.nombre;"
+```
+
+Recetas cargadas:
+
+```powershell
+docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT id_receta, nombre FROM recetas ORDER BY nombre;"
+```
+
+Ingredientes por receta:
+
+```powershell
+docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT r.nombre AS receta, p.nombre AS producto, ri.cantidad_gramos FROM receta_ingredientes ri JOIN recetas r ON r.id_receta = ri.id_receta JOIN productos p ON p.id_producto = ri.id_producto ORDER BY r.nombre, p.nombre;"
+```
+
+Recetas con ingredientes agrupados en una sola fila:
+
+```powershell
+docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT r.nombre AS receta, STRING_AGG(p.nombre || ' (' || ri.cantidad_gramos::text || ' g)', ', ' ORDER BY p.nombre) AS ingredientes FROM receta_ingredientes ri JOIN recetas r ON r.id_receta = ri.id_receta JOIN productos p ON p.id_producto = ri.id_producto GROUP BY r.id_receta, r.nombre ORDER BY r.nombre;"
 ```
 
 ### Salidas normalizadas actuales
