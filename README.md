@@ -1,504 +1,528 @@
 # WNS Challenge
 
-Este `README.md` queda enfocado en la estructura del repositorio, el setup tecnico base y el estado actual del procesamiento, persistencia y consulta de datos implementados en Python.
+## Descripcion del proyecto
 
-## Estructura actual
+Esta aplicacion resuelve la consigna de cotizar recetas usando tres fuentes de datos entregadas por el desafio:
 
-- `consigna.md`: enunciado original del desafio.
-- `inputs/`: archivos entregados por la consigna.
-- `docs/der.png`: diagrama entidad relacion de la base.
-- `docker-compose.yml`: servicios Docker para PostgreSQL, scripts Python y API HTTP.
-- `docker/python/Dockerfile`: imagen base para ejecutar scripts Python y la API en contenedor.
-- `docker/postgres/init/01_schema.sql`: esquema inicial de la base.
-- `.dockerignore`: archivos excluidos del contexto de build.
-- `requirements.txt`: dependencias Python del proyecto.
-- `src/parsers/`: parseo y normalizacion de archivos fuente.
-- `src/cli/`: entrypoints para inspeccionar salidas del parser.
-- `src/ingest/`: persistencia de datos normalizados en PostgreSQL.
-- `src/services/`: logica de negocio que consume PostgreSQL y la API externa permitida por la consigna.
-- `src/api/`: capa HTTP para exponer la resolucion de la consigna.
-- `src/api/static/`: frontend minimo servido por FastAPI para mostrar el funcionamiento de la API.
-- `src/ingest/db.py`: configuracion y conexion reutilizable a PostgreSQL.
-- `src/ingest/productos.py`: upserts reutilizables para categorias, subcategorias y productos.
+- `inputs/Carnes y Pescados.xlsx`
+- `inputs/verduleria.pdf`
+- `inputs/Recetas.md`
 
-## DER
+El flujo implementado es:
 
-![DER de la base de datos](docs/der.png)
+1. parsear y normalizar los archivos de entrada
+2. persistir los datos en PostgreSQL
+3. consumir PostgreSQL para resolver recetas, ingredientes y precios
+4. consultar la cotizacion historica USD/ARS
+5. exponer el resultado por API HTTP, CLI y un frontend minimo
 
-## Programas necesarios
+La aplicacion calcula el costo total del plato en pesos argentinos y dolares estadounidenses, redondeando cada compra al siguiente multiplo de `250 g`, tal como pide la consigna.
 
-Para levantar este proyecto en otro dispositivo, con el estado actual del repositorio, tienes dos caminos:
+## Caracteristicas
 
-- `Local`: usar Python instalado en tu maquina.
-- `Docker`: encapsular el entorno Python y PostgreSQL en contenedores.
+- Parseo de multiples formatos: Excel, PDF y Markdown.
+- Persistencia normalizada en PostgreSQL.
+- API HTTP para consultar recetas y cotizaciones.
+- Frontend web integrado para probar la aplicacion.
+- Calculo de costos con redondeo a multiplos de `250 g`.
+- Integracion con API historica de tipo de cambio USD/ARS.
+- Validacion de fechas dentro de los ultimos `30` dias.
+- Setup reproducible con Docker o Python local.
 
-### Opcion local
+## Datos
 
-Necesitas tener instalado:
+El proyecto procesa:
 
-- `Git`: para clonar el repositorio.
-- `Python 3`: para ejecutar el parser y la futura capa de procesamiento.
-- `pip`: para instalar dependencias Python.
+- `10` recetas en formato Markdown.
+- `29` productos de carnes y pescados en Excel.
+- `16` productos de verduras en PDF.
 
-### Opcion Docker
+Los datos se normalizan y se almacenan en PostgreSQL despues de ejecutar la ingesta.
 
-Necesitas tener instalado:
+## Tecnologias usadas
 
-- `Git`: para clonar el repositorio.
-- `Docker Desktop`: para ejecutar PostgreSQL en contenedor.
-- `WSL 2`: revisar en Windows si Docker Desktop lo instalo o lo habilito durante la instalacion, porque suele usarlo como backend.
+- `Python`: lenguaje principal para parseo, ingesta, logica de negocio y API.
+- `PostgreSQL`: base de datos relacional para persistir productos, recetas e ingredientes.
+- `FastAPI`: framework para exponer la API HTTP y servir el frontend.
+- `Uvicorn`: servidor ASGI para ejecutar la aplicacion FastAPI.
+- `Docker / Docker Compose`: entorno reproducible para levantar PostgreSQL y correr la aplicacion.
+- `pandas`: lectura y normalizacion del archivo Excel de carnes y pescados.
+- `openpyxl`: motor usado por `pandas` para procesar el archivo `.xlsx`.
+- `pdfplumber`: lectura y extraccion de texto del PDF de verduleria.
+- `psycopg`: conexion y operaciones contra PostgreSQL desde Python.
 
-## Entorno Python local
+## Instalacion y uso
 
-Antes de instalar dependencias, crear un entorno virtual local en el root del proyecto:
+Los scripts `.ps1` de esta seccion estan pensados para ejecutarse en `Windows` con `PowerShell`.
 
-```powershell
-python -m venv .venv
-```
+### Opcion 1: Docker
 
-Si trabajas en VS Code, selecciona `.venv\Scripts\python.exe` como interpreter del workspace. Si prefieres activarlo manualmente en PowerShell:
+Es el camino mas simple para evaluar el proyecto porque no requiere instalar Python ni PostgreSQL localmente.
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
+**Requisitos**
 
-Si PowerShell bloquea `Activate.ps1`, no hace falta depender de la activacion manual: basta con seleccionar ese interpreter en VS Code o ejecutar `.\.venv\Scripts\python.exe` directamente.
+- `Docker`
+- `Docker Compose`
 
-Luego instalar dependencias:
+Segun la instalacion del equipo, `Docker Compose` puede venir incluido con Docker Desktop o requerir instalacion aparte.
 
-```powershell
-python -m pip install -r requirements.txt
-```
-
-Dependencias actuales:
-
-- `pandas==3.0.1`
-- `openpyxl==3.1.5`
-- `pdfplumber==0.11.9`
-- `psycopg[binary]==3.2.12`
-- `fastapi==0.135.1`
-- `uvicorn==0.41.0`
-
-## Entorno Python con Docker
-
-Construir la imagen del servicio Python:
+**Comando de instalación**
 
 ```powershell
-docker compose build python
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_docker.ps1
 ```
 
-Luego puedes ejecutar los parsers sin instalar Python ni dependencias en tu maquina:
+Ese comando:
+
+- construye las imagenes necesarias
+- levanta PostgreSQL
+- crea la base de datos
+- aplica el schema
+- ingiere todos los datos
+- levanta la API y el frontend
+
+En Docker, PostgreSQL puede crear la base y aplicar el schema durante la inicializacion del contenedor. Por eso, el resumen de `bootstrap` puede mostrar `no` en esos campos aunque el reset se haya hecho correctamente.
+
+Cuando termina, la aplicacion queda disponible en:
+
+- Frontend: `http://127.0.0.1:8000/`
+
+**Reset Docker**
+
+Si quieres borrar contenedores, volumen e imagenes locales del proyecto antes de volver a probar la instalacion:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\reset_docker.ps1
+```
+
+
+### Opcion 2: Python local
+
+Este camino usa Python local para ejecutar la aplicacion, pero requiere tener PostgreSQL ya instalado y corriendo en la maquina.
+
+**Requisitos**
+
+- `Python 3`
+- `PostgreSQL`
+
+**Comando de instalación**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_local.ps1
+```
+
+Ese comando:
+
+- crea `.venv` si no existe
+- instala todas las dependencias de Python
+- crea la base de datos
+- aplica el schema
+- ingiere todos los datos
+- levanta la API y el frontend
+
+Cuando termina, la aplicacion queda disponible en:
+
+- Frontend: `http://127.0.0.1:8000/`
+
+**Reset local**
+
+Si quieres volver a probar la instalacion local desde el estado previo del proyecto:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\reset_local.ps1
+```
+
+Ese comando:
+
+- elimina la base de datos del proyecto si existe
+- elimina `.venv`
+
+No desinstala `Python` ni `PostgreSQL` del sistema.
+Si `.venv` no existe, el script no puede eliminar la base del proyecto desde Python.
+
+
+## Frontend y API
+
+### Frontend
+
+El frontend esta integrado en FastAPI y se sirve automaticamente en `http://127.0.0.1:8000/`.
+
+**Uso**
+
+1. Inicia la aplicacion con alguno de los comandos de la seccion `Instalacion y uso`.
+2. Abre tu navegador en `http://127.0.0.1:8000/`.
+3. Selecciona una receta y una fecha.
+4. Haz clic en `Cotizar receta`.
+
+El frontend consume los endpoints de la API para mostrar los resultados.
+
+### API
+
+### Endpoints principales
+
+- `GET /api/health`
+- `GET /api/recetas`
+- `GET /api/cotizacion?receta=...&fecha=YYYY-MM-DD`
+- `GET /docs`
+
+## Detalles tecnicos
+
+### Redondeo de cantidades
+
+Las cantidades se redondean siempre hacia arriba al siguiente multiplo de `250 g`.
+
+- `250 g -> 250 g`
+- `251 g -> 500 g`
+- `800 g -> 1000 g`
+
+### Tipo de cambio
+
+El tipo de cambio USD/ARS se obtiene desde endpoints configurables en `CURRENCY_API_URLS`.
+
+Endpoint principal por defecto:
+
+```text
+https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@{date}/v1/currencies/usd.json
+```
+
+La fecha debe enviarse en formato `YYYY-MM-DD` y estar dentro de los ultimos 30 dias.
+
+## Probar endpoints en Postman
+
+Usar metodo `GET` sobre estas URLs:
+
+- `http://127.0.0.1:8000/api/health`
+- `http://127.0.0.1:8000/api/recetas`
+- `http://127.0.0.1:8000/api/cotizacion?receta=Asado%20con%20ensalada%20criolla&fecha=YYYY-MM-DD`
+
+Para cotizar, reemplazar `YYYY-MM-DD` por una fecha valida dentro de los ultimos 30 dias.
+
+## Testeo manual
+
+Ademas del frontend y la API, el proyecto mantiene comandos auxiliares para validar parseo, ingesta y cotizacion desde terminal.
+
+### Inspeccionar parseos
+
+**Python local**
+
+```powershell
+.\.venv\Scripts\python.exe -m src.cli.inspect_carnes_pescados
+.\.venv\Scripts\python.exe -m src.cli.inspect_verduleria
+.\.venv\Scripts\python.exe -m src.cli.inspect_recetas
+```
+
+**Docker**
 
 ```powershell
 docker compose run --rm python python -m src.cli.inspect_carnes_pescados
 docker compose run --rm python python -m src.cli.inspect_verduleria
-```
-
-Nota:
-
-- Los comandos `python -m ...` del `README` siguen siendo el camino local.
-- Con Docker, los equivalentes pasan a ser `docker compose run --rm python python -m ...`.
-- El contenedor monta el repo completo, por eso lee `inputs/` y `src/` directamente desde tu copia local.
-
-## Base de datos PostgreSQL
-
-Se dejo preparada una instancia reproducible con la imagen `postgres:15.17-trixie`.
-
-### Variables por defecto
-
-Las variables base estan en `.env.example`:
-
-```env
-POSTGRES_HOST=localhost
-POSTGRES_DB=wns_challenge
-POSTGRES_USER=wns_user
-POSTGRES_PASSWORD=wns_password
-POSTGRES_PORT=5432
-CURRENCY_API_URLS=https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@{date}/v1/currencies/usd.json,https://{date}.currency-api.pages.dev/v1/currencies/usd.json
-```
-
-Si quieres personalizarlas:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-`CURRENCY_API_URLS` acepta una lista separada por comas de endpoints con placeholder `{date}`. El servicio de cotizacion usa el primero como primario y prueba los siguientes como fallback.
-
-## Como levantar la base
-
-1. Descargar la imagen:
-
-   ```powershell
-   docker pull postgres:15.17-trixie
-   ```
-
-2. Levantar el contenedor:
-
-   ```powershell
-   docker compose up -d postgres
-   ```
-
-3. Verificar estado:
-
-   ```powershell
-   docker compose ps
-   ```
-
-4. Verificar tablas creadas:
-
-   ```powershell
-   docker compose exec postgres psql -U wns_user -d wns_challenge -c "\dt"
-   ```
-
-## Persistencia
-
-- El esquema se crea automaticamente desde `docker/postgres/init/01_schema.sql` cuando el volumen esta vacio.
-- Los datos persisten entre reinicios en el volumen `postgres_data`.
-- Si clonas el repo en otro equipo, el esquema vuelve a crearse con `docker compose up -d postgres`.
-
-## Reinicializar todo
-
-Si quieres borrar la base y recrearla desde cero:
-
-```powershell
-docker compose down -v
-docker compose up -d postgres
-```
-
-## Conexion local esperada
-
-- Host: `localhost`
-- Puerto: `5432`
-- Base: `wns_challenge`
-- Usuario: `wns_user`
-
-## Parsers actuales
-
-Por ahora la parte implementada en Python cubre:
-
-- el parseo y la normalizacion de `inputs/Carnes y Pescados.xlsx`
-- el parseo y la normalizacion de `inputs/verduleria.pdf`
-- el parseo y la normalizacion de `inputs/Recetas.md`
-
-La insercion en PostgreSQL desde Python esta implementada para `inputs/Carnes y Pescados.xlsx`, `inputs/verduleria.pdf` e `inputs/Recetas.md`.
-
-- El parser real esta en `src/parsers/carnes_pescados.py`.
-- El parser real de verduras esta en `src/parsers/verduleria.py`.
-- El parser real de recetas esta en `src/parsers/recetas.py`.
-- Los CLI de inspeccion estan en `src/cli/inspect_carnes_pescados.py`, `src/cli/inspect_verduleria.py` y `src/cli/inspect_recetas.py`.
-- El CLI de cotizacion esta en `src/cli/cotizar_receta.py`.
-- La API HTTP se arma en `src/api/app.py` y `src/api/routes.py`.
-- La ingesta actual de carnes y pescados se ejecuta desde `src/ingest/carnes_pescados.py`.
-- La ingesta actual de verduleria se ejecuta desde `src/ingest/verduleria.py`.
-- La ingesta actual de recetas se ejecuta desde `src/ingest/recetas.py`.
-- `src/ingest/db.py` centraliza la configuracion y conexion a PostgreSQL.
-- `src/ingest/productos.py` centraliza los upserts reutilizables de categorias, subcategorias y productos.
-- `src/services/calculator.py` centraliza la logica de cotizacion del plato.
-- `src/services/exchange_rate.py` centraliza la consulta de cotizacion USD/ARS.
-
-### Como ejecutar los parsers
-
-Modo local, Excel, salida legible:
-
-```powershell
-python -m src.cli.inspect_carnes_pescados
-```
-
-Modo local, PDF, salida legible:
-
-```powershell
-python -m src.cli.inspect_verduleria
-```
-
-Modo local, Markdown de recetas, salida legible:
-
-```powershell
-python -m src.cli.inspect_recetas
-```
-
-Modo Docker, Excel, salida legible:
-
-```powershell
-docker compose run --rm python python -m src.cli.inspect_carnes_pescados
-```
-
-Modo Docker, PDF, salida legible:
-
-```powershell
-docker compose run --rm python python -m src.cli.inspect_verduleria
-```
-
-Modo Docker, Markdown de recetas, salida legible:
-
-```powershell
 docker compose run --rm python python -m src.cli.inspect_recetas
 ```
 
-### Como ejecutar la ingesta actual
+### Ejecutar ingestas puntuales
 
-Con PostgreSQL levantado, puedes ejecutar la ingesta de carnes y pescados asi:
-
-Modo local:
+**Python local**
 
 ```powershell
-python -m src.ingest.carnes_pescados
+.\.venv\Scripts\python.exe -m src.ingest.carnes_pescados
+.\.venv\Scripts\python.exe -m src.ingest.verduleria
+.\.venv\Scripts\python.exe -m src.ingest.recetas
 ```
 
-Modo Docker:
+**Docker**
 
 ```powershell
 docker compose run --rm python python -m src.ingest.carnes_pescados
-```
-
-Con PostgreSQL levantado, puedes ejecutar la ingesta de verduleria asi:
-
-Modo local:
-
-```powershell
-python -m src.ingest.verduleria
-```
-
-Modo Docker:
-
-```powershell
 docker compose run --rm python python -m src.ingest.verduleria
-```
-
-Con PostgreSQL levantado y con `productos` ya cargados desde Excel y PDF, puedes ejecutar la ingesta de recetas asi:
-
-Modo local:
-
-```powershell
-python -m src.ingest.recetas
-```
-
-Modo Docker:
-
-```powershell
 docker compose run --rm python python -m src.ingest.recetas
 ```
 
-### Como visualizar lo insertado
+### Probar la cotizacion por CLI
 
-Resumen de cantidades:
-
-```powershell
-docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT COUNT(*) AS categorias FROM categorias; SELECT COUNT(*) AS subcategorias FROM subcategorias; SELECT COUNT(*) AS productos FROM productos;"
-```
-
-Categorias y subcategorias cargadas:
+**Python local**
 
 ```powershell
-docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT c.nombre AS categoria, s.nombre AS subcategoria FROM subcategorias s JOIN categorias c ON c.id_categoria = s.id_categoria ORDER BY c.nombre, s.nombre;"
+.\.venv\Scripts\python.exe -m src.cli.cotizar_receta --listar-recetas
+.\.venv\Scripts\python.exe -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD
 ```
 
-Productos cargados con su precio:
+**Docker**
 
 ```powershell
-docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT c.nombre AS categoria, s.nombre AS subcategoria, p.nombre AS producto, p.precio_kg_ars, p.es_estacional FROM productos p JOIN subcategorias s ON s.id_subcategoria = p.id_subcategoria JOIN categorias c ON c.id_categoria = s.id_categoria ORDER BY c.nombre, s.nombre, p.nombre;"
+docker compose run --rm python python -m src.cli.cotizar_receta --listar-recetas
+docker compose run --rm python python -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD
 ```
 
-Recetas cargadas:
+## Arquitectura
 
-```powershell
-docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT id_receta, nombre FROM recetas ORDER BY nombre;"
-```
+### DER
 
-Ingredientes por receta:
+Vista general de las tablas y relaciones principales de la base de datos.
 
-```powershell
-docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT r.nombre AS receta, p.nombre AS producto, ri.cantidad_gramos FROM receta_ingredientes ri JOIN recetas r ON r.id_receta = ri.id_receta JOIN productos p ON p.id_producto = ri.id_producto ORDER BY r.nombre, p.nombre;"
-```
+![Diagrama entidad relación de la base de datos](docs/der.png)
 
-Recetas con ingredientes agrupados en una sola fila:
+### Flujo general
 
-```powershell
-docker compose exec postgres psql -U wns_user -d wns_challenge -c "SELECT r.nombre AS receta, STRING_AGG(p.nombre || ' (' || ri.cantidad_gramos::text || ' g)', ', ' ORDER BY p.nombre) AS ingredientes FROM receta_ingredientes ri JOIN recetas r ON r.id_receta = ri.id_receta JOIN productos p ON p.id_producto = ri.id_producto GROUP BY r.id_receta, r.nombre ORDER BY r.nombre;"
-```
+- `src/parsers/`: parseo y normalizacion de archivos fuente
+- `src/ingest/`: creacion de base, schema e ingesta de datos en PostgreSQL
+- `src/services/`: calculo de cotizacion y consulta de tipo de cambio
+- `src/api/`: API HTTP y frontend
 
-### Salidas normalizadas actuales
-
-El parser del Excel devuelve una lista de productos con esta estructura:
-
-```json
-{
-  "categoria": "Carniceria",
-  "subcategoria": "Carne Vacuna",
-  "nombre": "Asado de tira",
-  "precio_kg_ars": 6800.0
-}
-```
-
-El parser del PDF devuelve una lista de productos con esta estructura:
-
-```json
-{
-  "categoria": "Verduleria",
-  "subcategoria": "Fruto",
-  "nombre": "Tomate",
-  "precio_kg_ars": 1200.0,
-  "es_estacional": true
-}
-```
-
-El parser de recetas devuelve una lista de recetas con esta estructura:
-
-```json
-{
-  "nombre": "Asado con ensalada criolla",
-  "instrucciones": "Cortar las verduras en cubos y mezclarlas con un poco de sal.",
-  "ingredientes": [
-    {
-      "nombre_producto": "Asado de tira",
-      "cantidad_gramos": 1000
-    }
-  ]
-}
-```
-
-Supuestos actuales del Excel:
-
-- `Carniceria` se toma desde el bloque `C:D` del Excel.
-- `Pescaderia` se toma desde el bloque `F:G` del Excel.
-- `Pescaderia` no trae subcategoria explicita, por eso se usa `General`.
-- Los precios se normalizan desde formatos mixtos como `6800`, `6.000` y `$2600`.
-
-Supuestos actuales del PDF:
-
-- `Verduleria` se toma como categoria unica para todos los productos del PDF.
-- La subcategoria se extrae desde lineas como `Fruto por kg`, `Hoja por kg`, `Raiz por kg` y `Tuberculo por kg`.
-- `De estacion` se transforma en `es_estacional = true`.
-- Las lineas informativas o de pie de pagina no se consideran productos.
-
-Supuestos actuales de `Recetas.md`:
-
-- Cada receta empieza con un encabezado Markdown de nivel 1.
-- Las secciones de ingredientes pueden aparecer como `Lista de Ingredientes`, `Ingredientes` o `Lista`.
-- Las secciones de instrucciones pueden aparecer como `Instrucciones` o `Preparacion`.
-- Las cantidades se normalizan a gramos enteros.
-- Los ingredientes quedan referenciados por `nombre_producto` para la futura resolucion contra la tabla `productos`.
-
-### Flujos actuales de los parsers
+### Diagramas de flujo de procesamiento
 
 Excel `Carnes y Pescados.xlsx`:
+
+Lectura, normalizacion e ingesta de productos y precios.
 
 ![Diagrama de flujos carnes y pescados](docs/diagrama-de-flujo-carnes-y-pescados.png)
 
 PDF `verduleria.pdf`:
 
+Lectura, normalizacion e ingesta de verduras y precios.
+
 ![Diagrama de flujos verduleria](docs/diagrama-de-flujo-verduleria.png)
 
 Markdown `Recetas.md`:
 
+Lectura, normalizacion e ingesta de recetas e ingredientes.
+
 ![Diagrama de flujos recetas](docs/diagrama-de-flujo-recetas.png)
-
-## Resolver la consigna
-
-Con PostgreSQL levantado y con las tres fuentes ya ingeridas, la aplicacion puede cotizar un plato directamente desde la base.
-
-### 1. Listar recetas disponibles
-
-Modo local:
-
-```powershell
-python -m src.cli.cotizar_receta --listar-recetas
-```
-
-Modo Docker:
-
-```powershell
-docker compose run --rm python python -m src.cli.cotizar_receta --listar-recetas
-```
-
-### 2. Cotizar una receta por fecha
-
-La fecha debe estar en formato `YYYY-MM-DD` y dentro de los ultimos 30 dias. El calculo:
-
-- usa los productos ya persistidos en PostgreSQL
-- redondea cada compra al siguiente multiplo de `250 g`
-- consulta la API de cotizacion historica USD/ARS indicada en la consigna
-- permite configurar endpoints alternativos con `CURRENCY_API_URLS` sin tocar el codigo
-
-Modo local:
-
-```powershell
-python -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD
-```
-
-Modo Docker:
-
-```powershell
-docker compose run --rm python python -m src.cli.cotizar_receta --receta "Asado con ensalada criolla" --fecha YYYY-MM-DD
-```
-
-La salida incluye:
-
-- nombre de la receta
-- fecha cotizada
-- cotizacion USD/ARS usada
-- ingredientes con cantidad pedida, cantidad a comprar, precio por kilo y subtotal
-- total final en pesos argentinos y dolares estadounidenses
-
-## API HTTP
-
-Ademas del CLI, la resolucion de la consigna tambien se expone por HTTP.
-
-La misma instancia de FastAPI tambien sirve un frontend minimo en la raiz `/` para consultar recetas y cotizaciones desde el navegador.
-
-### Levantar la API en local
-
-```powershell
-python -m uvicorn src.api.app:app --reload
-```
-
-### Levantar la API con Docker
-
-```powershell
-docker compose --profile api up --build api
-```
-
-### Frontend demo
-
-Con la API levantada, abrir en el navegador:
-
-- `http://127.0.0.1:8000/`
-
-### Endpoints
-
-- `GET /api/health`: verifica que la API este arriba.
-- `GET /api/recetas`: devuelve las recetas ya cargadas en PostgreSQL.
-- `GET /api/cotizacion?receta=...&fecha=YYYY-MM-DD`: cotiza una receta usando PostgreSQL y la API historica USD/ARS.
-- `GET /docs`: documentacion interactiva generada por FastAPI.
 
 ### Diagramas de secuencia de la API
 
 `GET /api/health`:
 
+Chequeo de disponibilidad de la API.
+
 ![Diagrama de secuencia health](docs/diagrama-de-secuencia-health.png)
+
+Ejemplo:
+
+```http
+GET http://127.0.0.1:8000/api/health
+```
+
+Respuesta:
+
+```json
+{
+  "status": "ok"
+}
+```
 
 `GET /api/recetas`:
 
+Consulta de recetas cargadas en la base.
+
 ![Diagrama de secuencia recetas](docs/diagrama-de-secuencia-recetas.png)
+
+Ejemplo:
+
+```http
+GET http://127.0.0.1:8000/api/recetas
+```
+
+Respuesta:
+
+```json
+{
+    "recetas": [
+        "Asado con ensalada criolla",
+        "Berenjenas rellenas con carne picada",
+        "Cerdo con batatas al horno",
+        "Ensalada de atún (merluza) con espinaca",
+        "Entraña con ensalada tibia de remolacha",
+        "Lomo salteado con brócoli y morrón",
+        "Pejerrey al horno con verduras de estación",
+        "Pollo al horno con papas y zanahorias",
+        "Salteado de carne con choclo y acelga",
+        "Supremas de pollo con puré de zapallo y brócoli"
+    ]
+}
+```
 
 `GET /api/cotizacion`:
 
+Proceso completo de cotizacion de una receta.
+
 ![Diagrama de secuencia cotizacion](docs/diagrama-de-secuencia-cotizacion.png)
 
-Ejemplos locales:
+Ejemplo:
 
-```powershell
-Invoke-RestMethod "http://127.0.0.1:8000/api/health"
-Invoke-RestMethod "http://127.0.0.1:8000/api/recetas"
-Invoke-RestMethod "http://127.0.0.1:8000/api/cotizacion?receta=Asado%20con%20ensalada%20criolla&fecha=YYYY-MM-DD"
+```http
+GET http://127.0.0.1:8000/api/cotizacion?receta=Asado%20con%20ensalada%20criolla&fecha=2026-03-12
 ```
 
-### Probar endpoints en Postman
+Respuesta:
 
-1. Probar estas URLs con metodo `GET`:
+```json
+{
+    "cotizacion": {
+        "receta": "Asado con ensalada criolla",
+        "fecha": "2026-03-12",
+        "cotizacion_usd_ars": "1395.38536501",
+        "instrucciones": "Cortar las verduras en cubos y mezclarlas con un poco de sal. Asar la carne a la parrilla hasta el punto deseado y acompañar con la ensalada.",
+        "ingredientes": [
+            {
+                "nombre_producto": "Asado de tira",
+                "cantidad_receta_gramos": 1000,
+                "cantidad_compra_gramos": 1000,
+                "precio_kg_ars": "6800.00",
+                "subtotal_ars": "6800.00"
+            },
+            {
+                "nombre_producto": "Tomate",
+                "cantidad_receta_gramos": 250,
+                "cantidad_compra_gramos": 250,
+                "precio_kg_ars": "1200.00",
+                "subtotal_ars": "300.00"
+            },
+            {
+                "nombre_producto": "Cebolla",
+                "cantidad_receta_gramos": 400,
+                "cantidad_compra_gramos": 500,
+                "precio_kg_ars": "900.00",
+                "subtotal_ars": "450.00"
+            },
+            {
+                "nombre_producto": "Morrón",
+                "cantidad_receta_gramos": 250,
+                "cantidad_compra_gramos": 250,
+                "precio_kg_ars": "1500.00",
+                "subtotal_ars": "375.00"
+            }
+        ],
+        "total_ars": "7925.00",
+        "total_usd": "5.68"
+    }
+}
+```
 
-   - `http://127.0.0.1:8000/api/health`
-   - `http://127.0.0.1:8000/api/recetas`
-   - `http://127.0.0.1:8000/api/cotizacion?receta=Asado%20con%20ensalada%20criolla&fecha=YYYY-MM-DD`
+## Estructura del repositorio
 
-2. Para cotizar, reemplazar `YYYY-MM-DD` por una fecha valida dentro de los ultimos 30 dias.
+```text
+WNS-instancia-evaluativa/
+|-- src/
+|   |-- parsers/                       # Parseos y normalizaciones de archivos
+|   |   |-- carnes_pescados.py         # Parseo y normalización de Excel de carnes y pescados
+|   |   |-- recetas.py                 # Parseo y normalización de recetas en Markdown
+|   |   `-- verduleria.py              # Parseo y normalización de PDF de verduras
+|   |
+|   |-- ingest/                        # Ingestas puntuales por fuente
+|   |   |-- carnes_pescados.py         # Carga productos del Excel
+|   |   |-- db.py                      # Conexion y settings de PostgreSQL
+|   |   |-- productos.py               # Upserts reutilizables de productos
+|   |   |-- recetas.py                 # Carga recetas e ingredientes
+|   |   `-- verduleria.py              # Carga productos del PDF
+|   |
+|   |-- setup/                         # Inicializacion completa del proyecto
+|   |   |-- bootstrap.py               # Crea DB, aplica schema e ingiere datos
+|   |   `-- reset_project.py           # Elimina la base del proyecto
+|   |
+|   |-- services/                      # Logica de negocio
+|   |   |-- calculator.py              # Calcula el costo de una receta
+|   |   `-- exchange_rate.py           # Consulta el tipo de cambio USD/ARS
+|   |
+|   |-- api/                           # API HTTP y frontend
+|   |   |-- app.py                     # Configuracion principal de FastAPI
+|   |   |-- routes.py                  # Endpoints HTTP
+|   |   `-- static/
+|   |       |-- index.html             # Interfaz web minima
+|   |       |-- styles.css             # Estilos del frontend
+|   |       `-- app.js                 # Consumo de la API desde el navegador
+|   |
+|   `-- cli/                           # Herramientas auxiliares por terminal
+|       |-- cotizar_receta.py          # Cotizacion desde consola
+|       |-- inspect_carnes_pescados.py # Inspeccion del parseo de Excel
+|       |-- inspect_recetas.py         # Inspeccion del parseo de Markdown
+|       `-- inspect_verduleria.py      # Inspeccion del parseo de PDF
+|
+|-- inputs/                            # Archivos entregados por la consigna
+|   |-- Carnes y Pescados.xlsx         
+|   |-- Recetas.md                     
+|   `-- verduleria.pdf              
+|   
+|-- docker/
+|   |-- postgres/init/01_schema.sql    # Schema inicial de PostgreSQL
+|   `-- python/Dockerfile  
+|            
+|-- scripts/                           
+|   |-- reset_docker.ps1              # Borra contenedores, volumen e imagenes locales
+|   |-- reset_local.ps1               # Elimina la base del proyecto y `.venv`
+|   |-- setup_docker.ps1               # Preparacion y arranque con Docker
+|   `-- setup_local.ps1                # Preparacion y arranque en local
+|
+|-- docs/                              # Diagramas del proyecto
+|-- docker-compose.yml                 
+|-- requirements.txt                   
+`-- README.md                          
+```
+
+## Decisiones tecnicas y diseño
+
+### Fortalezas
+
+- Modularidad por capas y por fuente de datos.
+- Ingesta idempotente para evitar duplicados.
+- Setup con un comando por camino (`Docker` o `Python local`).
+- API y frontend listos para demo y validacion manual.
+- Validaciones claras para recetas, fechas y errores de integracion externa.
+
+### Debilidades y limitaciones
+
+- El camino `Python local` requiere PostgreSQL previamente instalado y corriendo.
+- La configuracion actual de `.env` entre `Docker` y `Python local` esta algo acoplada y podria unificarse mejor.
+- La cotizacion depende de la disponibilidad de una API externa USD/ARS.
+- El frontend es deliberadamente simple y esta pensado como demo funcional.
+- No hay autenticacion ni control de acceso en la API.
+- No hay una suite automatizada de tests end-to-end.
+
+### Asunciones
+
+- Los precios de carnes, pescados y verduras se consideran constantes en el tiempo.
+- La compra de cada ingrediente se redondea al siguiente multiplo de `250 g`.
+- La fecha de cotizacion debe estar dentro de los ultimos `30` dias.
+- Los nombres de ingredientes de las recetas deben coincidir con productos ya cargados.
+- La carga de datos puede ejecutarse mas de una vez sin duplicar registros.
+
+### Limitaciones y condiciones de operacion
+
+- Los scripts `.ps1` estan pensados para `Windows` con `PowerShell`.
+- `reset_docker.ps1` elimina contenedores, volumen e imagenes locales del proyecto.
+- `reset_local.ps1` elimina la base del proyecto y `.venv`, pero no desinstala `Python` ni `PostgreSQL`.
+- En Docker, PostgreSQL puede crear la base y aplicar el schema antes del `bootstrap`.
+- La cotizacion requiere conexion saliente a los endpoints configurados en `CURRENCY_API_URLS`.
+
+### Escalabilidad y deployment en produccion
+
+#### Cambios recomendados para produccion
+
+**Backend y API**
+
+- Ejecutar FastAPI detras de un servidor ASGI de produccion y un reverse proxy.
+- Agregar cache para cotizaciones y consultas frecuentes.
+- Incorporar autenticacion y autorizacion si la API deja de ser publica.
+- Sumar logging estructurado, metricas y monitoreo.
+- Implementar rate limiting y politicas de timeout mas estrictas.
+- Externalizar configuracion sensible por variables de entorno o secretos.
+
+**Infraestructura**
+
+- Separar base de datos, API y frontend en servicios independientes.
+- Mover PostgreSQL a una instancia administrada o persistencia dedicada.
+- Agregar HTTPS, health checks y politicas de restart mas robustas.
+- Incorporar CI/CD para despliegues automatizados.
+- Considerar balanceo de carga y escalado horizontal si aumenta el trafico.
+
+**Frontend**
+
+- Separar el frontend del backend si la interfaz crece en complejidad.
+- Incorporar un proceso de build y optimizacion de assets.
+- Mejorar el manejo de errores y el feedback visual al usuario.
+- Evaluar un framework frontend dedicado si la demo evoluciona a producto.
+
+**Datos**
+
+- Versionar mejor los datos normalizados para recalculos y auditoria.
+- Automatizar la carga de archivos con jobs programados o eventos.
+- Agregar validaciones de integridad y trazabilidad por corrida de ingesta.
